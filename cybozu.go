@@ -1,4 +1,4 @@
-package selenium
+package cybozu // import "github.com/synerex/meeting_cybozu"
 
 import (
 	"errors"
