@@ -3,6 +3,7 @@ package cybozu // import "github.com/synerex/meeting_cybozu"
 import (
 	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"strings"
 	"time"
@@ -340,6 +341,9 @@ func Execute(year string, month string, day string, week string, start string, e
 }
 
 func Schedules(year string, month string, day string, start string, end string, people string) (string, error) {
+
+	log.Println("Schedule function is called by github.com/synerex/meeting_cybozu")
+
 	driver := agouti.ChromeDriver(agouti.Browser("chrome"))
 	// driver := agouti.ChromeDriver(
 	// 	agouti.ChromeOptions("args", []string{
