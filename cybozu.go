@@ -340,14 +340,14 @@ func Execute(year string, month string, day string, week string, start string, e
 }
 
 func Schedules(year string, month string, day string, start string, end string, people string) (string, error) {
-	// driver := agouti.ChromeDriver(agouti.Browser("chrome"))
-	driver := agouti.ChromeDriver(
-		agouti.ChromeOptions("args", []string{
-			"--headless",
-			"--disable-gpu",
-		}),
-		agouti.Debug,
-	)
+	driver := agouti.ChromeDriver(agouti.Browser("chrome"))
+	// driver := agouti.ChromeDriver(
+	// 	agouti.ChromeOptions("args", []string{
+	// 		"--headless",
+	// 		"--disable-gpu",
+	// 	}),
+	// 	agouti.Debug,
+	// )
 
 	if err := driver.Start(); err != nil {
 		fmt.Println("Failed to start driver:", err)
