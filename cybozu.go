@@ -3,8 +3,6 @@ package cybozu // import "github.com/synerex/meeting_cybozu"
 import (
 	"errors"
 	"fmt"
-	"log"
-	"math/rand"
 	"strings"
 	"time"
 
@@ -49,7 +47,7 @@ func searchIndex(dates []string, target string) (int, error) {
 	}
 }
 
-func login(page *agouti.Page, user string) {
+func login(page *agouti.Page, user string) error {
 	// get user list
 	usersDom := getPageDOM(page).Find("select[name='_ID']").Children()
 	users := make([]string, usersDom.Length())
@@ -60,32 +58,31 @@ func login(page *agouti.Page, user string) {
 	// search index
 	userIndex, err := searchIndex(users, user)
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
 	// set login user
 	name := page.FindByName("_ID")
 	if _, err := name.Count(); err != nil {
-		fmt.Println("Cannot find path:", err)
+		return err
 	}
 	name.Select(users[userIndex])
 	// click login button
 	submitBtn := page.FindByName("Submit")
 	if _, err := submitBtn.Count(); err != nil {
-		fmt.Println("Failed to login:", err)
+		return err
 	}
 	// click
 	if err := submitBtn.Click(); err != nil {
-		fmt.Println("Faild to click:", err)
-	} else {
-		fmt.Println("Login complete:", users[userIndex])
+		return err
 	}
+	fmt.Println("Login complete:", users[userIndex])
+	return nil
 }
 
 func booking(page *agouti.Page, date string, start string, end string, title string, room string) error {
 	reserveButton := page.FindByXPath("//*[@id=\"content-wrapper\"]/div[4]/div/div[1]/table/tbody/tr/td[1]/table/tbody/tr/td[1]/span/span/a")
 	_, err := reserveButton.Count()
 	if err != nil {
-		fmt.Println("Cannot find path:", err)
 		return err
 	}
 	reserveButton.Click()
@@ -139,17 +136,14 @@ func booking(page *agouti.Page, date string, start string, end string, title str
 	dateSplit := strings.Split(date, "/")
 	yearIndex, err := searchIndex(years, dateSplit[0])
 	if err != nil {
-		fmt.Println(err)
 		return err
 	}
 	monthIndex, err := searchIndex(months, dateSplit[1])
 	if err != nil {
-		fmt.Println(err)
 		return err
 	}
 	dayIndex, err := searchIndex(days, dateSplit[2])
 	if err != nil {
-		fmt.Println(err)
 		return err
 	}
 
@@ -157,108 +151,89 @@ func booking(page *agouti.Page, date string, start string, end string, title str
 	endSplit := strings.Split(end, ":")
 	startHourIndex, err := searchIndex(startHours, startSplit[0]+"時")
 	if err != nil {
-		fmt.Println(err)
 		return err
 	}
 	startMinuteIndex, err := searchIndex(startMinutes, startSplit[1]+"分")
 	if err != nil {
-		fmt.Println(err)
 		return err
 	}
 	endHourIndex, err := searchIndex(endHours, endSplit[0]+"時")
 	if err != nil {
-		fmt.Println(err)
 		return err
 	}
 	endMinuteIndex, err := searchIndex(endMinutes, endSplit[1]+"分")
 	if err != nil {
-		fmt.Println(err)
 		return err
 	}
 
 	yearX := page.FindByName("SetDate.Year")
 	_, err = yearX.Count()
 	if err != nil {
-		fmt.Println("Cannot find path:", err)
 		return err
 	}
 	monthX := page.FindByName("SetDate.Month")
 	_, err = monthX.Count()
 	if err != nil {
-		fmt.Println("Cannot find path:", err)
 		return err
 	}
 	dayX := page.FindByName("SetDate.Day")
 	_, err = dayX.Count()
 	if err != nil {
-		fmt.Println("Cannot find path:", err)
 		return err
 	}
 	startHourX := page.FindByName("SetTime.Hour")
 	_, err = startHourX.Count()
 	if err != nil {
-		fmt.Println("Cannot find path:", err)
 		return err
 	}
 	startMinuteX := page.FindByName("SetTime.Minute")
 	_, err = startMinuteX.Count()
 	if err != nil {
-		fmt.Println("Cannot find path:", err)
 		return err
 	}
 	endHourX := page.FindByName("EndTime.Hour")
 	_, err = endHourX.Count()
 	if err != nil {
-		fmt.Println("Cannot find path:", err)
 		return err
 	}
 	endMinuteX := page.FindByName("EndTime.Minute")
 	_, err = endMinuteX.Count()
 	if err != nil {
-		fmt.Println("Cannot find path:", err)
 		return err
 	}
 
 	err = yearX.Select(years[yearIndex])
 	if err != nil {
-		fmt.Println("Select Error:", err)
 		return err
 	}
 	err = monthX.Select(months[monthIndex])
 	if err != nil {
-		fmt.Println("Select Error:", err)
 		return err
 	}
 	err = dayX.Select(days[dayIndex])
 	if err != nil {
-		fmt.Println("Select Error:", err)
 		return err
 	}
 	err = startHourX.Select(startHours[startHourIndex])
 	if err != nil {
-		fmt.Println("Select Error:", err)
 		return err
 	}
 	err = startMinuteX.Select(startMinutes[startMinuteIndex])
 	if err != nil {
-		fmt.Println("Select Error:", err)
 		return err
 	}
 	err = endHourX.Select(endHours[endHourIndex])
 	if err != nil {
-		fmt.Println("Select Error:", err)
 		return err
 	}
 	err = endMinuteX.Select(endMinutes[endMinuteIndex])
 	if err != nil {
-		fmt.Println("Select Error:", err)
 		return err
 	}
 
 	// set the title
 	detail := page.FindByName("Detail")
 	if _, err := detail.Count(); err != nil {
-		fmt.Println("Failed to find path:", err)
 		return err
 	}
 	detail.Fill(title)
@@ -282,7 +257,6 @@ func booking(page *agouti.Page, date string, start string, end string, title str
 	entryButton := page.FindByName("Entry")
 	_, err = entryButton.Count()
 	if err != nil {
-		println("Login Error:", err)
 		return err
 	}
 	entryButton.Click()
@@ -295,22 +269,24 @@ func Execute(year string, month string, day string, week string, start string, e
 	// set of Chrome
 	driver := agouti.ChromeDriver(agouti.Browser("chrome"))
 	if err := driver.Start(); err != nil {
-		fmt.Println("Failed to start driver:", err)
+		return err
 	}
 	defer driver.Stop()
 
 	page, err := driver.NewPage()
 	if err != nil {
-		fmt.Println("Failed to open new page:", err)
+		return err
 	}
 
 	// sample Cybozu
 	if err := page.Navigate(url); err != nil {
-		fmt.Println("Failed to navigate:", err)
+		return err
 	}
 
 	// login
-	login(page, loginName)
+	if err := login(page, loginName); err != nil {
+		return err
+	}
 
 	// get group list
 	groupsDom := getPageDOM(page).Find("select[name='GID']").Children()
@@ -340,9 +316,7 @@ func Execute(year string, month string, day string, week string, start string, e
 	return nil
 }
 
-func Schedules(year string, month string, day string, start string, end string, people string) (string, error) {
-
-	log.Println("Schedule function is called by github.com/synerex/meeting_cybozu")
+func Schedules(year string, month string, day string, start string, end string, people string) (map[string][]string, error) {
 
 	driver := agouti.ChromeDriver(agouti.Browser("chrome"))
 	// driver := agouti.ChromeDriver(
@@ -354,22 +328,24 @@ func Schedules(year string, month string, day string, start string, end string, 
 	// )
 
 	if err := driver.Start(); err != nil {
-		fmt.Println("Failed to start driver:", err)
+		return nil, err
 	}
 	defer driver.Stop()
 
 	page, err := driver.NewPage()
 	if err != nil {
-		fmt.Println("Failed to open new page:", err)
+		return nil, err
 	}
 
 	// sample Cybozu
 	if err := page.Navigate(url); err != nil {
-		fmt.Println("Failed to navigate:", err)
+		return nil, err
 	}
 
 	// login
-	login(page, loginName)
+	if err := login(page, loginName); err != nil {
+		return nil, err
+	}
 
 	// get group list
 	groupsDom := getPageDOM(page).Find("select[name='GID']").Children()
@@ -382,7 +358,7 @@ func Schedules(year string, month string, day string, start string, end string, 
 	// move to meeting room page
 	group := page.FindByName("GID")
 	if _, err := group.Count(); err != nil {
-		fmt.Println("Cannot find path:", err)
+		return nil, err
 	}
 	group.Select(groups[10]) // "会議室"
 
@@ -415,19 +391,5 @@ func Schedules(year string, month string, day string, start string, end string, 
 		}
 	})
 
-	for k, v := range rooms {
-		fmt.Printf("rooms[%v]: %v\n", k, v)
-	}
-
-	roomArr := []string{"第一会議室", "第二会議室", "打合せルーム"}
-
-	// time.Sleep(3 * time.Second)
-	return choice(roomArr), nil
-}
-
-// choose room randomly
-func choice(s []string) string {
-	rand.Seed(time.Now().UnixNano())
-	i := rand.Intn(len(s))
-	return s[i]
+	return rooms, nil
 }
