@@ -3,6 +3,9 @@ package cybozu // import "github.com/synerex/meeting_cybozu"
 import (
 	"errors"
 	"fmt"
+	"log"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -77,6 +80,163 @@ func login(page *agouti.Page, user string) error {
 	}
 	fmt.Println("Login complete:", users[userIndex])
 	return nil
+}
+
+func clickBtnByPath(page *agouti.Page, path string) error {
+	btn := page.Find(path)
+	if _, err := btn.Count(); err != nil {
+		return err
+	}
+	btn.Click()
+	time.Sleep(1 * time.Second)
+	return nil
+}
+
+func comparePeriod(page *agouti.Page, year string, month string, day string) error {
+	screenDate, err := checkScreenDate(page, "#cb7-schedweek-date-title233 > b")
+	if err != nil {
+		return err
+	}
+
+	targetY, targetM, targetD := extractDate(screenDate)
+
+	targetObj := createTimeDate(targetY, targetM, targetD)
+	sentObj := createTimeDate(year, month, day)
+
+	// 送られてきた日付の画面まで遷移する
+	hour := subtractHour(sentObj, targetObj)
+	if hour > 0 {
+		for {
+			if err := clickBtnByPath(page, "#cb7-schedweek233 > tbody > tr:nth-child(1) > td > table > tbody > tr > td:nth-child(3) > button:nth-child(4)"); err != nil {
+				log.Fatalln(err)
+			}
+
+			screenDate, err = checkScreenDate(page, "#cb7-schedweek-date-title233 > b")
+			if err != nil {
+				return err
+			}
+			targetY, targetM, targetD = extractDate(screenDate)
+			targetObj := createTimeDate(targetY, targetM, targetD)
+			hour = subtractHour(sentObj, targetObj)
+
+			if hour == 0 {
+				break
+			}
+		}
+	} else if hour < 0 {
+		for {
+			if err := clickBtnByPath(page, "#cb7-schedweek233 > tbody > tr:nth-child(1) > td > table > tbody > tr > td:nth-child(3) > button:nth-child(2)"); err != nil {
+				return err
+			}
+
+			screenDate, err = checkScreenDate(page, "#cb7-schedweek-date-title233 > b")
+			if err != nil {
+				return err
+			}
+			targetY, targetM, targetD = extractDate(screenDate)
+			targetObj := createTimeDate(targetY, targetM, targetD)
+			hour = subtractHour(sentObj, targetObj)
+
+			if hour == 0 {
+				break
+			}
+		}
+	}
+	return nil
+}
+
+// 日付の差分(hour)を返す
+func subtractHour(day1 time.Time, day2 time.Time) int {
+	subtract := day1.Sub(day2)
+	return int(subtract.Hours())
+}
+
+func createTimeDate(year string, month string, day string) time.Time {
+	location, err := time.LoadLocation("Asia/Tokyo")
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	y, _ := strconv.Atoi(year)
+	m := checkMonth(month)
+	d, _ := strconv.Atoi(day)
+	timeObj := time.Date(y, m, d, 0, 0, 0, 0, location)
+
+	return timeObj
+}
+
+func checkMonth(month string) time.Month {
+	var t time.Month
+	switch month {
+	case "1", "01":
+		t = time.January
+	case "2", "02":
+		t = time.February
+	case "3", "03":
+		t = time.March
+	case "4", "04":
+		t = time.April
+	case "5", "05":
+		t = time.May
+	case "6", "06":
+		t = time.June
+	case "7", "07":
+		t = time.July
+	case "8", "08":
+		t = time.August
+	case "9", "09":
+		t = time.September
+	case "10":
+		t = time.October
+	case "11":
+		t = time.November
+	case "12":
+		t = time.December
+	}
+	return t
+}
+
+// 画面に表示されている日付を返す
+func checkScreenDate(page *agouti.Page, selector string) (string, error) {
+	screenDate := page.Find(selector)
+	if _, err := screenDate.Count(); err != nil {
+		return "", err
+	}
+	date, _ := screenDate.Text()
+	return date, nil
+}
+
+// 文字列から日付を抽出する
+func extractDate(str string) (string, string, string) {
+	var num, year, month, day string
+	for _, c := range str {
+		flag := checkRegexp(`[0-9]`, string(c))
+		if flag == true {
+			num = num + string(c)
+		} else {
+			switch string(c) {
+			case "年":
+				year = num
+				num = ""
+			case "月":
+				month = num
+				num = ""
+			case "日":
+				day = num
+				num = ""
+			}
+		}
+		if day != "" {
+			break
+		}
+	}
+	return year, month, day
+}
+
+// 正規表現
+func checkRegexp(reg, str string) bool {
+	r := regexp.MustCompile(reg).Match([]byte(str))
+	return r
 }
 
 func booking(page *agouti.Page, date string, start string, end string, title string, room string) error {
@@ -392,4 +552,55 @@ func Schedules(year string, month string, day string, start string, end string, 
 	})
 
 	return rooms, nil
+}
+
+func Cancel(year string, month string, day string, title string) error {
+
+	driver := agouti.ChromeDriver(agouti.Browser("chrome"))
+	if err := driver.Start(); err != nil {
+		return err
+	}
+	defer driver.Stop()
+
+	page, err := driver.NewPage()
+	if err != nil {
+		return err
+	}
+
+	if err := page.Navigate(url); err != nil {
+		return err
+	}
+
+	if err := login(page, loginName); err != nil {
+		return err
+	}
+
+	if err := comparePeriod(page, year, month, day); err != nil {
+		return err
+	}
+
+	var href string
+	dom := getPageDOM(page).Find("#cb7-schedweek-view233 > table > tbody > tr.eventrow > td:nth-child(2)").Find("a")
+	dom.EachWithBreak(func(i int, s *goquery.Selection) bool {
+		if flag := strings.Contains(s.Text(), title); flag == true {
+			href, _ = s.Attr("href")
+			return false
+		}
+		return true
+	})
+
+	selector := "a[href='" + href + "']"
+	if err := clickBtnByPath(page, selector); err != nil {
+		return err
+	}
+
+	if err := clickBtnByPath(page, "#content-wrapper > div.content > div > div.menubar > table > tbody > tr > td:nth-child(1) > span:nth-child(2) > a"); err != nil {
+		return err
+	}
+
+	if err := clickBtnByPath(page, "#content-wrapper > div.content > div > form > table > tbody > tr > td > table > tbody > tr:nth-child(2) > td > div > div.vr_formCommitWrapper > p > input:nth-child(1)"); err != nil {
+		return err
+	}
+
+	return nil
 }
