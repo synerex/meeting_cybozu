@@ -78,7 +78,6 @@ func login(page *agouti.Page, user string) error {
 	if err := submitBtn.Click(); err != nil {
 		return err
 	}
-	fmt.Println("Login complete:", users[userIndex])
 	return nil
 }
 
@@ -426,6 +425,7 @@ func booking(page *agouti.Page, date string, start string, end string, title str
 }
 
 func Execute(year string, month string, day string, week string, start string, end string, people string, title string, room string) error {
+	log.Println("Execute in cybozu is called:", year, month, day, week, start, end, people, title, room)
 	// set of Chrome
 	driver := agouti.ChromeDriver(agouti.Browser("chrome"))
 	if err := driver.Start(); err != nil {
@@ -477,6 +477,7 @@ func Execute(year string, month string, day string, week string, start string, e
 }
 
 func Schedules(year string, month string, day string, start string, end string, people string) (map[string][]string, error) {
+	log.Println("Schedules in cybozu is called:", year, month, day, start, end, people)
 
 	driver := agouti.ChromeDriver(agouti.Browser("chrome"))
 	// driver := agouti.ChromeDriver(
@@ -555,6 +556,7 @@ func Schedules(year string, month string, day string, start string, end string, 
 }
 
 func Cancel(year string, month string, day string, title string) error {
+	log.Println("Cancel in cybozu is called:", year, month, day, title)
 
 	driver := agouti.ChromeDriver(agouti.Browser("chrome"))
 	if err := driver.Start(); err != nil {
