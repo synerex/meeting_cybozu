@@ -19,6 +19,11 @@ var (
 	loginName = "高橋 健太"
 )
 
+type Detail struct {
+	Memo         string
+	OccupiedTime string
+}
+
 func getPageDOM(page *agouti.Page) *goquery.Document {
 	// get whole page
 	wholePage, err := page.HTML()
@@ -230,6 +235,27 @@ func extractDate(str string) (string, string, string) {
 		}
 	}
 	return year, month, day
+}
+
+// 文字列から期間を抽出する
+func extractPeriod(str string) string {
+	var period string
+	for _, c := range str {
+		flag := checkRegexp(`[0-9]`, string(c))
+		if flag == true {
+			period = period + string(c)
+		} else {
+			switch string(c) {
+			case ":", "：":
+				period = period + ":"
+			case "-", "ー", "~", "〜":
+				period = period + "-"
+			default:
+				period = period + "/"
+			}
+		}
+	}
+	return period
 }
 
 // 正規表現
@@ -476,7 +502,7 @@ func Execute(year string, month string, day string, week string, start string, e
 	return nil
 }
 
-func Schedules(year string, month string, day string, start string, end string, people string) (map[string][]string, error) {
+func Schedules(year string, month string, day string, start string, end string, people string) (map[string]Detail, error) {
 	log.Println("Schedules in cybozu is called:", year, month, day, start, end, people)
 
 	driver := agouti.ChromeDriver(agouti.Browser("chrome"))
@@ -498,13 +524,15 @@ func Schedules(year string, month string, day string, start string, end string, 
 		return nil, err
 	}
 
-	// sample Cybozu
 	if err := page.Navigate(url); err != nil {
 		return nil, err
 	}
 
-	// login
 	if err := login(page, loginName); err != nil {
+		return nil, err
+	}
+
+	if err := comparePeriod(page, year, month, day); err != nil {
 		return nil, err
 	}
 
@@ -523,34 +551,30 @@ func Schedules(year string, month string, day string, start string, end string, 
 	}
 	group.Select(groups[10]) // "会議室"
 
-	// get schedules
-	schedulesDom := getPageDOM(page).Find("#redraw > table > tbody").Children()
-	rooms := make(map[string][]string, schedulesDom.Length())
-	schedulesDom.Each(func(i int, sel *goquery.Selection) {
-		if i == 0 {
-			sel.Children().Each(func(j int, cc *goquery.Selection) {
-				if j == 0 {
-					rooms["dates"] = []string{}
-				} else {
-					st := strings.TrimSpace(cc.Text())
-					rooms["dates"] = append(rooms["dates"], st)
-				}
-			})
-		} else {
-			roomName := "none"
-			sel.Children().Each(func(j int, cc *goquery.Selection) {
-				if j == 0 {
-					roomName = strings.Trim(cc.Children().First().First().Text(), " \n")
-					roomName = strings.TrimSpace(roomName)
-					rooms[roomName] = []string{}
-				} else {
-					st := strings.Trim(cc.Text(), "\n")
-					st = strings.TrimSpace(st)
-					rooms[roomName] = append(rooms[roomName], st)
-				}
-			})
+	// ページ遷移後、次のコンテンツが表示されるまでにタイムラグが生じる
+	time.Sleep(1 * time.Second)
+
+	dom := getPageDOM(page).Find("tr[class='eventrow']").Children()
+	rooms := make(map[string]Detail)
+	var roomname string
+	var detail Detail
+	dom.Each(func(i int, s *goquery.Selection) {
+		switch i % 8 {
+		case 0:
+			roomname = s.Find("a").First().Text()
+			detail.Memo = s.Find("span[class='facilitymemo']").First().Text()
+		case 1:
+			str := s.Find("span[class='eventDateTime']").Text()
+			period := extractPeriod(str)
+			detail.OccupiedTime = period
+		default:
+			rooms[roomname] = detail
 		}
 	})
+
+	for k, v := range rooms {
+		log.Printf("k:%v, memo:%v, occupied:%v", k, v.Memo, v.OccupiedTime)
+	}
 
 	return rooms, nil
 }
