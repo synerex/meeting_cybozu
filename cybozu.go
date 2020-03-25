@@ -489,6 +489,9 @@ func Execute(year string, month string, day string, week string, start string, e
 	}
 	group.Select(groups[9]) // "(全施設)"
 
+	// ページ遷移後、次のコンテンツが表示されるまでにタイムラグが生じる
+	time.Sleep(1 * time.Second)
+
 	// make a reservation
 	// date := "2019年/4月/23(火)"
 	// start := "10:00"
