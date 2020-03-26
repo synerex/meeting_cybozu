@@ -16,7 +16,7 @@ import (
 
 var (
 	url       = "https://onlinedemo.cybozu.info/scripts/office10/ag.cgi?"
-	loginName = "高橋 健太"
+	loginName = "和田 一夫"
 )
 
 type Detail struct {
