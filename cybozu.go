@@ -535,7 +535,9 @@ func Schedules(year string, month string, day string, start string, end string, 
 		return nil, err
 	}
 
+	log.Println("Compare Period")
 	if err := comparePeriod(page, year, month, day); err != nil {
+		log.Println("Compare Period Err", err)
 		return nil, err
 	}
 
